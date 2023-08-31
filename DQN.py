@@ -53,6 +53,13 @@ class ExplorationModule(nn.Module):
         # print(estimation_residule.shape)
         return estimation_residule.unsqueeze(-1)
 
+class ExplorationModule(object):
+    def __init__(self, factor=1.0):
+        self.table = {}
+    
+    def __call__(self, state, action, next_state):
+        pass
+
 
 class DQN(object):
     def __init__(

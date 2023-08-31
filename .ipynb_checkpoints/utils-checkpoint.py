@@ -20,7 +20,7 @@ def eval_policy(policy, env, eval_episodes=100):
         state_aggregation += state
         while not done:
             action = policy.select_action(np.array(state), eval=True)
-            state, _, done, _ = eval_env.step(action)
+            state, reward, done, info = eval_env.step(action)
             done_float = float(done)
             avg_reward += 1
             state_aggregation += state
@@ -32,29 +32,11 @@ def eval_policy(policy, env, eval_episodes=100):
     print(f"Evaluation over {eval_episodes} episodes: {avg_reward:.3f}")
     print("---------------------------------------")
     return avg_reward, state_aggregation
-
-def rollout(policy, env, eval_episodes=10):
-    eval_env = env
-
-    avg_reward = 0
-    state_aggregation = 0
-    for _ in range(eval_episodes):
-        state, done = eval_env.reset(), False
-        state_aggregation += state
-        while not done:
-            action = policy.select_action(np.array(state), eval=True)
-            state, _, done, _ = eval_env.step(action)
-            done_float = float(done)
-            state_aggregation += eval_env.render_occupancy()
-
-    state_aggregation /= eval_episodes
-
-    return state_aggregation
             
 def train_agent(
     agent,
     env,
-    max_steps=int(2e4),
+    max_steps=int(5e4),
     replay_buffer_size=int(1e5),
     exploration_steps=int(1e3),
     eval_frequency=int(1e3),
@@ -92,10 +74,8 @@ def train_agent(
                 action = policy.select_action(np.array(state), eval=True)
 
         # Perform action and log results
-        # rollout_state_aggregation += rollout(policy, eval_env)
-
-        # collect rollout at each step
-        rollout.append(rollout(policy, eval_env))
+        rollout_state_aggregation += env.render_occupancy()
+        rollout.append(copy.deepcopy(rollout_state_aggregation))
         next_state, reward, done, info = env.step(action)
         episode_reward += reward
 
@@ -122,7 +102,7 @@ def train_agent(
         # Evaluate episode
         if (t + 1) % eval_frequency == 0:
             print(f'Evaluation at time step : {t+1}')
-            rewards, viz = eval_policy(policy, eval_env)
+            rewards, viz = eval_policy(policy, env)
             evaluations.append(rewards)
             visualization.append(viz)
             np.save(f"./visualization/{filename}_viz", visualization)
@@ -135,7 +115,7 @@ def train_agent_rollin(
     agent,
     explore_agent,
     env,
-    max_steps=int(2e4),
+    max_steps=int(5e4),
     replay_buffer_size=int(1e5),
     exploration_steps=int(1e3),
     eval_frequency=int(1e3),
@@ -176,10 +156,8 @@ def train_agent_rollin(
                 action = explore_policy.select_action(np.array(state), eval=True)
 
         # Perform action and log results
-        # rollout_state_aggregation += env.render_occupancy()
-        # rollout.append(copy.deepcopy(rollout_state_aggregation))
-
-        rollout.append(rollout(policy, eval_env))
+        rollout_state_aggregation += env.render_occupancy()
+        rollout.append(copy.deepcopy(rollout_state_aggregation))
         next_state, reward, done, info = env.step(action)
         episode_reward += reward
 
@@ -207,7 +185,7 @@ def train_agent_rollin(
         # Evaluate episode
         if (t + 1) % eval_frequency == 0:
             print(f'Evaluation at time step : {t+1}')
-            rewards, viz = eval_policy(policy, eval_env)
+            rewards, viz = eval_policy(policy, env)
             evaluations.append(rewards)
             visualization.append(viz)
             np.save(f"./visualization/{filename}_viz", visualization)
